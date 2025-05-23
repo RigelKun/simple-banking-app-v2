@@ -62,6 +62,70 @@ The Simple Banking App is a user-friendly and responsive Flask-based banking app
   - API rate limiting to prevent abuse
   - CSRF protection for all forms
 
+## Security Assessment Findings
+
+During the security assessment of the original application, the following vulnerabilities were identified:
+
+- **Insecure Password Storage:** Passwords were not always hashed using a strong algorithm.
+- **Session Management Issues:** Sessions were not properly invalidated on logout.
+- **CSRF Vulnerabilities:** Some forms lacked CSRF protection.
+- **Rate Limiting Gaps:** Critical endpoints lacked sufficient rate limiting.
+- **Input Validation:** Insufficient validation on user input, leading to potential SQL injection and XSS.
+- **Password Reset Flaws:** Token-based reset mechanism was not securely implemented.
+- **Privilege Escalation:** Inadequate checks on user roles for sensitive actions.
+
+## Security Improvements Implemented
+
+To address the identified vulnerabilities, the following improvements were made:
+
+- **Password Hashing:** All passwords are now hashed using bcrypt.
+- **Session Security:** Sessions are securely managed and invalidated on logout.
+- **CSRF Protection:** Flask-WTF CSRF protection is enforced on all forms.
+- **Rate Limiting:** Flask-Limiter is configured for all sensitive endpoints.
+- **Input Validation:** All user inputs are validated and sanitized using WTForms.
+- **Password Reset:** Secure, time-limited tokens are used for password resets.
+- **Role-Based Access Control:** Strict checks are implemented for all privileged actions.
+- **API Security:** PSGC API integration is secured and rate-limited.
+
+## Penetration Testing Report
+
+**Summary of Vulnerabilities Identified:**
+- SQL Injection via login and registration forms.
+- Cross-Site Scripting (XSS) in user profile fields.
+- CSRF on fund transfer and admin actions.
+- Brute-force login attempts due to missing rate limiting.
+
+**Exploitation Steps:**
+1. Attempted SQL injection payloads in login and registration forms.
+2. Injected script tags in profile fields to test for XSS.
+3. Submitted forged POST requests to test CSRF.
+4. Automated login attempts to test for brute-force protection.
+
+**Recommendations:**
+- Use parameterized queries and ORM for all database access.
+- Sanitize and encode all user-generated content.
+- Enforce CSRF tokens on all forms.
+- Implement rate limiting on authentication and sensitive endpoints.
+
+## Remediation Plan
+
+- Refactored all database queries to use SQLAlchemy ORM.
+- Added input validation and output encoding for all user inputs.
+- Enabled CSRF protection globally via Flask-WTF.
+- Configured Flask-Limiter for all critical routes.
+- Reviewed and enforced role-based access checks throughout the application.
+- Improved password reset flow with secure tokens and expiry.
+
+## Technology Stack
+
+- **Backend:** Python, Flask
+- **Database:** MySQL (SQLAlchemy ORM)
+- **Frontend:** HTML, CSS, Bootstrap 5
+- **Authentication:** Flask-Login, Flask-Bcrypt, Werkzeug
+- **Forms:** Flask-WTF, WTForms
+- **Security:** Flask-Limiter, CSRF protection, bcrypt, secure sessions
+- **External API:** PSGC API for Philippine geographic data
+
 ## Getting Started
 
 ### Prerequisites
