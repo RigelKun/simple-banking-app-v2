@@ -1,6 +1,21 @@
 # Simple Banking App
 
-A user-friendly and responsive Flask-based banking application designed for deployment on PythonAnywhere. This application allows users to create accounts, perform simulated money transfers between accounts, view transaction history, and securely manage their credentials.
+## Group Members
+- Member 1: Rigel Parco
+- Member 2: Caren Joy Epres
+- Member 3: Mark Wayne Cleofe
+
+## Introduction
+
+The Simple Banking App is a user-friendly and responsive Flask-based banking application designed for deployment on PythonAnywhere. This application allows users to create accounts, perform simulated money transfers between accounts, view transaction history, and securely manage their credentials.
+
+## Objectives
+
+- Provide a secure and intuitive online banking experience.
+- Enable users to manage accounts, transfer funds, and view transaction history.
+- Implement a hierarchical user role system (User, Admin, Manager).
+- Integrate Philippine location data for accurate address management.
+- Ensure the application is secure against common web vulnerabilities.
 
 ## Features
 
