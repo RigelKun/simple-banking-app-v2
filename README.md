@@ -116,16 +116,6 @@ To address the identified vulnerabilities, the following improvements were made:
 - Reviewed and enforced role-based access checks throughout the application.
 - Improved password reset flow with secure tokens and expiry.
 
-## Technology Stack
-
-- **Backend:** Python, Flask
-- **Database:** MySQL (SQLAlchemy ORM)
-- **Frontend:** HTML, CSS, Bootstrap 5
-- **Authentication:** Flask-Login, Flask-Bcrypt, Werkzeug
-- **Forms:** Flask-WTF, WTForms
-- **Security:** Flask-Limiter, CSRF protection, bcrypt, secure sessions
-- **External API:** PSGC API for Philippine geographic data
-
 ## Getting Started
 
 ### Prerequisites
