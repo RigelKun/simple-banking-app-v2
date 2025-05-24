@@ -1,5 +1,5 @@
 import os
-from flask import Flask, render_template, redirect, url_for, flash, request, jsonify
+from flask import Flask, render_template, redirect, url_for, flash, request, jsonify, session
 from flask_login import current_user, login_user, logout_user, login_required
 from werkzeug.security import generate_password_hash, check_password_hash
 import datetime
@@ -28,6 +28,11 @@ def create_app():
     
     # Set secret key for session security, using environment variable or a secure fallback
     app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY') or secrets.token_hex(16)
+
+    # Secure session cookie flags
+    app.config['SESSION_COOKIE_HTTPONLY'] = True
+    app.config['SESSION_COOKIE_SECURE'] = os.path.exists('cert.pem') and os.path.exists('key.pem')  # True only if HTTPS certs exist
+    app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 
     # Attach CSRF protection to the Flask app
     csrf.init_app(app)
@@ -64,6 +69,23 @@ def create_app():
     return app
 
 app = create_app()
+
+
+@app.errorhandler(404)
+def not_found_error(error):
+    return render_template('404.html'), 404
+
+@app.errorhandler(403)
+def forbidden_error(error):
+    return render_template('403.html'), 403
+
+@app.errorhandler(500)
+def internal_error(error):
+    # Optionally, rollback the session in case of DB errors
+    from extensions import db
+    db.session.rollback()
+    return render_template('500.html'), 500
+
 # Force HTTPS redirect
 @app.before_request
 def redirect_to_https():
@@ -72,7 +94,7 @@ def redirect_to_https():
         if not request.is_secure and request.headers.get('X-Forwarded-Proto', 'http') != 'https':
             url = request.url.replace('http://', 'https://', 1)
             return redirect(url, code=301)
-    
+
 from models import User, Transaction
 
 # Load user from session using user ID for authentication
@@ -90,7 +112,7 @@ def init_db():
         # Load admin credentials from environment for secure setup
         admin_email = os.environ.get('ADMIN_EMAIL', 'admin@bankapp.com')
         admin_username = os.environ.get('ADMIN_USERNAME', 'admin')
-        admin_password = os.environ.get('ADMIN_PASSWORD')     #Secure password from environment variable 
+        admin_password = os.environ.get('ADMIN_PASSWORD')  # Secure password from environment variable 
 
         if not admin_password:
             raise ValueError("ADMIN_PASSWORD environment variable must be set for secure admin setup.")
@@ -122,19 +144,17 @@ if __name__ == '__main__':
     with app.app_context():
         init_db()
 
-    ssl_cert = 'cert.pem' # Path to your SSL certificate
-    ssl_key = 'key.pem' # Path to your SSL key
+    ssl_cert = 'cert.pem'  # Path to your SSL certificate
+    ssl_key = 'key.pem'    # Path to your SSL key
 
     if os.path.exists(ssl_cert) and os.path.exists(ssl_key):
         print("Starting app with SSL (HTTPS)")
-        app.config['SESSION_COOKIE_SECURE'] = True  # Add this line
         app.run(
             debug=os.environ.get('FLASK_DEBUG', 'false').lower() == 'true',
             ssl_context=(ssl_cert, ssl_key)
         )
     else:
         print("SSL cert/key not found, starting app without HTTPS")
-        app.config['SESSION_COOKIE_SECURE'] = False  # Explicitly false for HTTP
         app.run(
             debug=os.environ.get('FLASK_DEBUG', 'false').lower() == 'true'
         )
