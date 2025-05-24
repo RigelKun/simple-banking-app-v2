@@ -13,35 +13,37 @@ from flask_limiter.errors import RateLimitExceeded
 # Import extensions
 from extensions import db, login_manager, bcrypt, limiter
 
-# Load environment variables
-load_dotenv()  # *Here for secure data loading from .env file*
+# Load environment variables from .env file
+load_dotenv()
 
-# Initialize CSRF protection
-csrf = CSRFProtect()  # *Here for CSRF protection*
+# Initialize CSRF protection instance
+csrf = CSRFProtect()
 
-# MySQL connection
+# Set up MySQL compatibility with SQLAlchemy
 pymysql.install_as_MySQLdb()
 
 # Create Flask application
 def create_app():
     app = Flask(__name__)
     
-    # Use secure secret key for session management
-    app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY') or secrets.token_hex(16)  # *Here for secure session handling*
+    # Set secret key for session security, using environment variable or a secure fallback
+    app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY') or secrets.token_hex(16)
 
-    # Enable CSRF protection
-    csrf.init_app(app)  # *Here to protect all form submissions*
+    # Attach CSRF protection to the Flask app
+    csrf.init_app(app)
 
-    # Database configuration using environment variables
+    # Load database configuration from environment variables
     mysql_user = os.environ.get('MYSQL_USER', '')
     mysql_password = os.environ.get('MYSQL_PASSWORD', '')
     mysql_host = os.environ.get('MYSQL_HOST', '')
     mysql_port = os.environ.get('MYSQL_PORT', '3306')
     mysql_database = os.environ.get('MYSQL_DATABASE', '')
 
+    # Validate presence of essential DB configuration values
     if not mysql_host or not mysql_user or not mysql_database:
-        print("WARNING: Missing DB configuration")  # *Here for configuration validation and debugging*
+        print("WARNING: Missing DB configuration")
 
+    # Configure SQLAlchemy with MySQL database URI
     db_uri = f"mysql+pymysql://{mysql_user}:{mysql_password}@{mysql_host}:{mysql_port}/{mysql_database}"
     app.config['SQLALCHEMY_DATABASE_URI'] = db_uri
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -50,39 +52,50 @@ def create_app():
     db.init_app(app)
     login_manager.init_app(app)
     bcrypt.init_app(app)
-    limiter.init_app(app)  # *Here for protection against abuse via rate limiting*
+    limiter.init_app(app)
 
+    # Custom error handler for rate limiting violations
     @app.errorhandler(RateLimitExceeded)
     def handle_rate_limit_exceeded(e):
         if request.path.startswith('/api/') or request.headers.get('Accept') == 'application/json':
             return jsonify({"error": "Rate limit exceeded", "message": str(e)}), 429
-        return render_template('rate_limit_error.html', message=str(e)), 429  # *Here to handle abuse limits securely*
+        return render_template('rate_limit_error.html', message=str(e)), 429
 
     return app
 
 app = create_app()
-
+# Force HTTPS redirect
+@app.before_request
+def redirect_to_https():
+    # Only redirect if app is running with SSL certs
+    if os.path.exists('cert.pem') and os.path.exists('key.pem'):
+        if not request.is_secure and request.headers.get('X-Forwarded-Proto', 'http') != 'https':
+            url = request.url.replace('http://', 'https://', 1)
+            return redirect(url, code=301)
+    
 from models import User, Transaction
 
+# Load user from session using user ID for authentication
 @login_manager.user_loader
 def load_user(user_id):
-    return User.query.get(int(user_id))  # *Here for secure session management*
+    return User.query.get(int(user_id))
 
 from routes import *
 
 def init_db():
-    """Initialize the database with required tables and default admin user."""
+    """Initialize the database schema and create the default admin user if none exists."""
     with app.app_context():
         db.create_all()
 
-        # Load admin credentials securely
-        admin_email = os.environ.get('ADMIN_EMAIL', 'admin@bankapp.com')  # *Here for secure admin identity*
-        admin_username = os.environ.get('ADMIN_USERNAME', 'admin')  # *Here for configurable admin username*
-        admin_password = os.environ.get('ADMIN_PASSWORD')  # *Here for secure password input*
+        # Load admin credentials from environment for secure setup
+        admin_email = os.environ.get('ADMIN_EMAIL', 'admin@bankapp.com')
+        admin_username = os.environ.get('ADMIN_USERNAME', 'admin')
+        admin_password = os.environ.get('ADMIN_PASSWORD')     #Secure password from environment variable 
 
         if not admin_password:
-            raise ValueError("ADMIN_PASSWORD environment variable must be set for secure admin setup.")  # *Here to prevent unsecured default passwords*
+            raise ValueError("ADMIN_PASSWORD environment variable must be set for secure admin setup.")
 
+        # Create admin user only if one does not already exist
         existing_admin = User.query.filter_by(is_admin=True).first()
         if not existing_admin:
             admin_user = User(
@@ -93,20 +106,35 @@ def init_db():
                 is_admin=True,
                 balance=0.0
             )
-            admin_user.set_password(admin_password)  # *Here to store password as a hash securely*
+            admin_user.set_password(admin_password)
             db.session.add(admin_user)
             db.session.commit()
-            print(f"Created admin user: {admin_username}")  # *Here for logging secure admin creation*
+            print(f"Created admin user: {admin_username}")
 
 if __name__ == '__main__':
-    # Only print env values in dev mode
+    # Print environment configuration in development mode only
     if os.environ.get('FLASK_ENV') == 'development':
         print("Loaded development environment variables:")
         print(f"MYSQL_HOST: {os.environ.get('MYSQL_HOST')}")
         print(f"MYSQL_USER: {os.environ.get('MYSQL_USER')}")
-        print(f"MYSQL_DATABASE: {os.environ.get('MYSQL_DATABASE')}")  # *Here for debug mode only, never expose in production*
+        print(f"MYSQL_DATABASE: {os.environ.get('MYSQL_DATABASE')}")
 
     with app.app_context():
         init_db()
 
-    app.run(debug=os.environ.get('FLASK_DEBUG', 'false').lower() == 'true')  # *Here to prevent debug mode in production*
+    ssl_cert = 'cert.pem' # Path to your SSL certificate
+    ssl_key = 'key.pem' # Path to your SSL key
+
+    if os.path.exists(ssl_cert) and os.path.exists(ssl_key):
+        print("Starting app with SSL (HTTPS)")
+        app.config['SESSION_COOKIE_SECURE'] = True  # Add this line
+        app.run(
+            debug=os.environ.get('FLASK_DEBUG', 'false').lower() == 'true',
+            ssl_context=(ssl_cert, ssl_key)
+        )
+    else:
+        print("SSL cert/key not found, starting app without HTTPS")
+        app.config['SESSION_COOKIE_SECURE'] = False  # Explicitly false for HTTP
+        app.run(
+            debug=os.environ.get('FLASK_DEBUG', 'false').lower() == 'true'
+        )
