@@ -70,6 +70,22 @@ def create_app():
 
 app = create_app()
 
+
+@app.errorhandler(404)
+def not_found_error(error):
+    return render_template('404.html'), 404
+
+@app.errorhandler(403)
+def forbidden_error(error):
+    return render_template('403.html'), 403
+
+@app.errorhandler(500)
+def internal_error(error):
+    # Optionally, rollback the session in case of DB errors
+    from extensions import db
+    db.session.rollback()
+    return render_template('500.html'), 500
+
 # Force HTTPS redirect
 @app.before_request
 def redirect_to_https():
