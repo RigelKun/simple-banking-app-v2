@@ -1,5 +1,7 @@
 # Simple Banking App
 
+The application can be accessed online by clicking this link: lilok97085.pythonanywhere.com
+
 ## Group Members
 - Member 1: Rigel Parco
 - Member 2: Caren Joy Epres
