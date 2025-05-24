@@ -9,7 +9,8 @@ import hashlib
 import os
 
 # Try to get the pepper from the environment if not found use a hardcoded value
-PEPPER = os.getenv('PEPPER', 'MyHardcodedPepperForSchoolProject123!')
+
+PEPPER = os.environ.get('PEPPER', 'default_pepper')
 
 def generate_account_number():
     """Generate a random 10-digit account number"""
@@ -68,12 +69,12 @@ class User(UserMixin, db.Model):
         return f'<User {self.username}>'
     
     def set_password(self, password):
-        combined = password + PEPPER
-        self.password_hash = bcrypt.generate_password_hash(combined).decode('utf-8')
+        peppered = password + PEPPER  
+        self.password_hash = bcrypt.generate_password_hash(peppered).decode('utf-8')
 
     def check_password(self, password):
-        combined = password + PEPPER
-        return bcrypt.check_password_hash(self.password_hash, combined)
+        peppered = password + PEPPER  
+        return bcrypt.check_password_hash(self.password_hash, peppered)
 
 
     @property
