@@ -4,6 +4,12 @@ from werkzeug.security import generate_password_hash, check_password_hash
 import datetime
 import random
 import string
+import os
+import hashlib
+import os
+
+# Try to get the pepper from the environment if not found use a hardcoded value
+PEPPER = os.getenv('PEPPER', 'MyHardcodedPepperForSchoolProject123!')
 
 def generate_account_number():
     """Generate a random 10-digit account number"""
@@ -62,13 +68,14 @@ class User(UserMixin, db.Model):
         return f'<User {self.username}>'
     
     def set_password(self, password):
-        # Use bcrypt for secure password hashing with salt
-        self.password_hash = bcrypt.generate_password_hash(password).decode('utf-8')
-    
+        combined = password + PEPPER
+        self.password_hash = bcrypt.generate_password_hash(combined).decode('utf-8')
+
     def check_password(self, password):
-        # Use bcrypt to verify password
-        return bcrypt.check_password_hash(self.password_hash, password)
-    
+        combined = password + PEPPER
+        return bcrypt.check_password_hash(self.password_hash, combined)
+
+
     @property
     def is_active(self):
         """Property to maintain compatibility with code using is_active"""
